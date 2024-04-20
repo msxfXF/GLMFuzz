@@ -1,0 +1,6 @@
+chatglm_cpp==0.3.1
+modelscope==1.13.3
+pandas==2.2.2
+pyshark==0.6
+Requests==2.31.0
+torch==2.2.0
