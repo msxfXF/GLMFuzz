@@ -1,30 +1,4 @@
-# American Fuzzy Lop plus plus (AFL++)
-
-<img align="right" src="https://raw.githubusercontent.com/AFLplusplus/Website/main/static/aflpp_bg.svg" alt="AFL++ logo" width="250" heigh="250">
-
-Release version: [4.10c](https://github.com/AFLplusplus/AFLplusplus/releases)
-
-GitHub version: 4.10c
-
-Repository:
-[https://github.com/AFLplusplus/AFLplusplus](https://github.com/AFLplusplus/AFLplusplus)
-
-AFL++ is maintained by:
-
-* Marc "van Hauser" Heuse <mh@mh-sec.de>
-* Dominik Maier <mail@dmnk.co>
-* Andrea Fioraldi <andreafioraldi@gmail.com>
-* Heiko "hexcoder-" Eissfeldt <heiko.eissfeldt@hexco.de>
-* frida_mode is maintained by @Worksbutnottested
-* Documentation: Jana Aydinbas <jana.aydinbas@gmail.com>
-
-Originally developed by Michal "lcamtuf" Zalewski.
-
-AFL++ is a superior fork to Google's AFL - more speed, more and better
-mutations, more and better instrumentation, custom module support, etc.
-
-You are free to copy, modify, and distribute AFL++ with attribution under the
-terms of the Apache-2.0 License. See the [LICENSE](LICENSE) for details.
+# General Language Model Fuzz, GLMFuzz
 
 ## Getting started
 
