@@ -31,6 +31,87 @@ apt-get install -y --no-install-recommends wget ca-certificates apt-utils
 rm -rf /var/lib/apt/lists/*
 ```
 
+## 安装 NVIDIA 驱动
+
+首先，确保您的系统上安装了最新的 NVIDIA 驱动。您可以通过以下命令来安装，版本号请自行查阅：
+
+```bash
+sudo apt-get update
+sudo apt-get install -y nvidia-driver-470
+```
+
+安装完成后，重启系统以使驱动生效：
+
+```bash
+sudo reboot
+```
+
+## 安装 CUDA
+
+接下来，安装 CUDA 工具包。请根据您的操作系统和 CUDA 版本下载相应的安装包。以下是安装 CUDA 11.3 的示例：
+
+```bash
+wget https://developer.download.nvidia.com/compute/cuda/11.3.0/local_installers/cuda_11.3.0_465.19.01_linux.run
+sudo sh cuda_11.3.0_465.19.01_linux.run
+```
+
+在安装过程中，选择安装 CUDA 工具包和驱动（如果尚未安装驱动）。
+
+安装完成后，添加 CUDA 路径到环境变量：
+
+```bash
+echo 'export PATH=/usr/local/cuda-11.3/bin:$PATH' >> ~/.bashrc
+echo 'export LD_LIBRARY_PATH=/usr/local/cuda-11.3/lib64:$LD_LIBRARY_PATH' >> ~/.bashrc
+source ~/.bashrc
+```
+
+## 安装 cuDNN
+
+下载并安装 cuDNN 库。以下是安装 cuDNN 8.2 的示例：
+
+```bash
+wget https://developer.download.nvidia.com/compute/redist/cudnn/v8.2.0/cudnn-11.3-linux-x64-v8.2.0.53.tgz
+tar -xzvf cudnn-11.3-linux-x64-v8.2.0.53.tgz
+sudo cp cuda/include/cudnn*.h /usr/local/cuda/include
+sudo cp cuda/lib64/libcudnn* /usr/local/cuda/lib64
+sudo chmod a+r /usr/local/cuda/include/cudnn*.h /usr/local/cuda/lib64/libcudnn*
+```
+
+## 安装依赖项
+
+在编译 PyTorch 之前，您需要安装一些依赖项：
+
+```bash
+sudo apt-get update
+sudo apt-get install -y build-essential cmake git libopenblas-dev libblas-dev libeigen3-dev python3-dev python3-pip
+pip3 install numpy pyyaml mkl mkl-include setuptools cmake cffi typing_extensions future six requests dataclasses
+```
+
+## 编译和安装 PyTorch
+
+克隆 PyTorch 仓库并编译安装：
+
+```bash
+git clone --recursive https://github.com/pytorch/pytorch
+cd pytorch
+git submodule sync
+git submodule update --init --recursive
+python3 setup.py install
+```
+
+## 验证安装
+
+安装完成后，您可以通过以下命令验证 PyTorch 和 CUDA 的安装是否成功：
+
+```python
+import torch
+print(torch.__version__)
+print(torch.cuda.is_available())
+print(torch.cuda.get_device_name(0))
+```
+
+如果输出显示 PyTorch 版本号和 CUDA 设备名称，则说明安装成功。
+
 ## 添加LLVM软件源
 
 添加LLVM软件源并下载其GPG密钥：
@@ -148,84 +229,3 @@ echo ". /etc/bash_completion" >> ~/.bashrc
 echo 'alias joe="joe --wordwrap --joe_state -nobackup"' >> ~/.bashrc
 echo "export PS1='"'[AFL++ \h] \w \$ '"'" >> ~/.bashrc
 ```
-
-## 安装 NVIDIA 驱动
-
-首先，确保您的系统上安装了最新的 NVIDIA 驱动。您可以通过以下命令来安装，版本号请自行查阅：
-
-```bash
-sudo apt-get update
-sudo apt-get install -y nvidia-driver-470
-```
-
-安装完成后，重启系统以使驱动生效：
-
-```bash
-sudo reboot
-```
-
-## 安装 CUDA
-
-接下来，安装 CUDA 工具包。请根据您的操作系统和 CUDA 版本下载相应的安装包。以下是安装 CUDA 11.3 的示例：
-
-```bash
-wget https://developer.download.nvidia.com/compute/cuda/11.3.0/local_installers/cuda_11.3.0_465.19.01_linux.run
-sudo sh cuda_11.3.0_465.19.01_linux.run
-```
-
-在安装过程中，选择安装 CUDA 工具包和驱动（如果尚未安装驱动）。
-
-安装完成后，添加 CUDA 路径到环境变量：
-
-```bash
-echo 'export PATH=/usr/local/cuda-11.3/bin:$PATH' >> ~/.bashrc
-echo 'export LD_LIBRARY_PATH=/usr/local/cuda-11.3/lib64:$LD_LIBRARY_PATH' >> ~/.bashrc
-source ~/.bashrc
-```
-
-## 安装 cuDNN
-
-下载并安装 cuDNN 库。以下是安装 cuDNN 8.2 的示例：
-
-```bash
-wget https://developer.download.nvidia.com/compute/redist/cudnn/v8.2.0/cudnn-11.3-linux-x64-v8.2.0.53.tgz
-tar -xzvf cudnn-11.3-linux-x64-v8.2.0.53.tgz
-sudo cp cuda/include/cudnn*.h /usr/local/cuda/include
-sudo cp cuda/lib64/libcudnn* /usr/local/cuda/lib64
-sudo chmod a+r /usr/local/cuda/include/cudnn*.h /usr/local/cuda/lib64/libcudnn*
-```
-
-## 安装依赖项
-
-在编译 PyTorch 之前，您需要安装一些依赖项：
-
-```bash
-sudo apt-get update
-sudo apt-get install -y build-essential cmake git libopenblas-dev libblas-dev libeigen3-dev python3-dev python3-pip
-pip3 install numpy pyyaml mkl mkl-include setuptools cmake cffi typing_extensions future six requests dataclasses
-```
-
-## 编译和安装 PyTorch
-
-克隆 PyTorch 仓库并编译安装：
-
-```bash
-git clone --recursive https://github.com/pytorch/pytorch
-cd pytorch
-git submodule sync
-git submodule update --init --recursive
-python3 setup.py install
-```
-
-## 验证安装
-
-安装完成后，您可以通过以下命令验证 PyTorch 和 CUDA 的安装是否成功：
-
-```python
-import torch
-print(torch.__version__)
-print(torch.cuda.is_available())
-print(torch.cuda.get_device_name(0))
-```
-
-如果输出显示 PyTorch 版本号和 CUDA 设备名称，则说明安装成功。
