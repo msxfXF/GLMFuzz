@@ -1,234 +1,231 @@
-# General Language Model Fuzz, GLMFuzz
+# GLMFuzz 编译指南
 
-## Getting started
+## 项目
 
-Here is some information to get you started:
+github: https://github.com/msxfXF/GLMFuzz
+docker hub: https://hub.docker.com/layers/msxf/glmfuzz
 
-* For an overview of the AFL++ documentation and a very helpful graphical guide,
-  please visit [docs/README.md](docs/README.md).
-* To get you started with tutorials, go to
-  [docs/tutorials.md](docs/tutorials.md).
-* For releases, see the
-  [Releases tab](https://github.com/AFLplusplus/AFLplusplus/releases) and
-  [branches](#branches). The best branches to use are, however, `stable` or
-  `dev` - depending on your risk appetite. Also take a look at the list of
-  [important changes in AFL++](docs/important_changes.md) and the list of
-  [features](docs/features.md).
-* If you want to use AFL++ for your academic work, check the
-  [papers page](https://aflplus.plus/papers/) on the website.
-* To cite our work, look at the [Cite](#cite) section.
-* For comparisons, use the fuzzbench `aflplusplus` setup, or use
-  `afl-clang-fast` with `AFL_LLVM_CMPLOG=1`. You can find the `aflplusplus`
-  default configuration on Google's
-  [fuzzbench](https://github.com/google/fuzzbench/tree/master/fuzzers/aflplusplus).
+## 设置环境变量
 
-## Building and installing AFL++
-
-To have AFL++ easily available with everything compiled, pull the image directly
-from the Docker Hub (available for both x86_64 and arm64):
-
-```shell
-docker pull aflplusplus/aflplusplus
-docker run -ti -v /location/of/your/target:/src aflplusplus/aflplusplus
+```bash
+export LLVM_VERSION=16
 ```
 
-This image is automatically published when a push to the stable branch happens
-(see [branches](#branches)). If you use the command above, you will find your
-target source code in `/src` in the container.
+## 更新软件源
 
-Note: you can also pull `aflplusplus/aflplusplus:dev` which is the most current
-development state of AFL++.
+将Ubuntu的软件源更改为清华大学的镜像源，以加快下载速度：
 
-To build AFL++ yourself - *which we recommend* - continue at
-[docs/INSTALL.md](docs/INSTALL.md).
+```bash
+sed -i 's@archive.ubuntu.com@mirrors.tuna.tsinghua.edu.cn@g' /etc/apt/sources.list
+sed -i 's@security.ubuntu.com@mirrors.tuna.tsinghua.edu.cn@g' /etc/apt/sources.list
+```
 
-## Quick start: Fuzzing with AFL++
+## 更新系统并安装基本工具
 
-*NOTE: Before you start, please read about the
-[common sense risks of fuzzing](docs/fuzzing_in_depth.md#0-common-sense-risks).*
+更新系统并安装一些基本工具：
 
-This is a quick start for fuzzing targets with the source code available. To
-read about the process in detail, see
-[docs/fuzzing_in_depth.md](docs/fuzzing_in_depth.md).
+```bash
+apt-get update
+apt-get full-upgrade -y
+apt-get install -y --no-install-recommends wget ca-certificates apt-utils
+rm -rf /var/lib/apt/lists/*
+```
 
-To learn about fuzzing other targets, see:
-* Binary-only targets:
-  [docs/fuzzing_binary-only_targets.md](docs/fuzzing_binary-only_targets.md)
-* Network services:
-  [docs/best_practices.md#fuzzing-a-network-service](docs/best_practices.md#fuzzing-a-network-service)
-* GUI programs:
-  [docs/best_practices.md#fuzzing-a-gui-program](docs/best_practices.md#fuzzing-a-gui-program)
+## 添加LLVM软件源
 
-Step-by-step quick start:
+添加LLVM软件源并下载其GPG密钥：
 
-1. Compile the program or library to be fuzzed using `afl-cc`. A common way to
-   do this would be:
+```bash
+echo "deb [signed-by=/etc/apt/keyrings/llvm-snapshot.gpg.key] http://apt.llvm.org/jammy/ llvm-toolchain-jammy-${LLVM_VERSION} main" > /etc/apt/sources.list.d/llvm.list
+wget -qO /etc/apt/keyrings/llvm-snapshot.gpg.key https://apt.llvm.org/llvm-snapshot.gpg.key
+```
 
-   ```
-   CC=/path/to/afl-cc CXX=/path/to/afl-c++ ./configure --disable-shared
-   make clean all
-   ```
+## 安装所需软件包
 
-2. Get a small but valid input file that makes sense to the program. When
-   fuzzing verbose syntax (SQL, HTTP, etc.), create a dictionary as described in
-   [dictionaries/README.md](dictionaries/README.md), too.
+安装项目所需的各种软件包：
 
-3. If the program reads from stdin, run `afl-fuzz` like so:
+```bash
+apt-get update
+apt-get -y install --no-install-recommends \
+    make cmake automake meson ninja-build bison flex \
+    git xz-utils bzip2 wget jupp nano bash-completion less vim joe ssh psmisc \
+    python3 python3-dev python3-pip python-is-python3 \
+    libtool libtool-bin libglib2.0-dev \
+    apt-transport-https gnupg dialog \
+    gnuplot-nox libpixman-1-dev bc \
+    gcc-${GCC_VERSION} g++-${GCC_VERSION} gcc-${GCC_VERSION}-plugin-dev gdb lcov \
+    clang-${LLVM_VERSION} clang-tools-${LLVM_VERSION} libc++1-${LLVM_VERSION} \
+    libc++-${LLVM_VERSION}-dev libc++abi1-${LLVM_VERSION} libc++abi-${LLVM_VERSION}-dev \
+    libclang1-${LLVM_VERSION} libclang-${LLVM_VERSION}-dev \
+    libclang-common-${LLVM_VERSION}-dev libclang-rt-${LLVM_VERSION}-dev libclang-cpp${LLVM_VERSION} \
+    libclang-cpp${LLVM_VERSION}-dev liblld-${LLVM_VERSION} \
+    liblld-${LLVM_VERSION}-dev liblldb-${LLVM_VERSION} liblldb-${LLVM_VERSION}-dev \
+    libllvm${LLVM_VERSION} libomp-${LLVM_VERSION}-dev libomp5-${LLVM_VERSION} \
+    lld-${LLVM_VERSION} lldb-${LLVM_VERSION} llvm-${LLVM_VERSION} \
+    llvm-${LLVM_VERSION}-dev llvm-${LLVM_VERSION}-runtime llvm-${LLVM_VERSION}-tools \
+    $([ "$(dpkg --print-architecture)" = "amd64" ] && echo gcc-${GCC_VERSION}-multilib gcc-multilib) \
+    $([ "$(dpkg --print-architecture)" = "arm64" ] && echo libcapstone-dev)
+rm -rf /var/lib/apt/lists/*
+```
 
-   ```
-   ./afl-fuzz -i seeds_dir -o output_dir -- \
-   /path/to/tested/program [...program's cmdline...]
-   ```
+## 更新编译器替代项
 
-   To add a dictionary, add `-x /path/to/dictionary.txt` to afl-fuzz.
+设置GCC和Clang的默认版本：
 
-   If the program takes input from a file, you can put `@@` in the program's
-   command line; AFL++ will put an auto-generated file name in there for you.
+```bash
+update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${GCC_VERSION} 0
+update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${GCC_VERSION} 0
+update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${LLVM_VERSION} 0
+update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-${LLVM_VERSION} 0
+```
 
-4. Investigate anything shown in red in the fuzzer UI by promptly consulting
-   [docs/afl-fuzz_approach.md#understanding-the-status-screen](docs/afl-fuzz_approach.md#understanding-the-status-screen).
+## 安装Rust工具链
 
-5. You will find found crashes and hangs in the subdirectories `crashes/` and
-   `hangs/` in the `-o output_dir` directory. You can replay the crashes by
-   feeding them to the target, e.g. if your target is using stdin:
+使用Rustup安装Rust工具链：
 
-   ```
-   cat output_dir/crashes/id:000000,* | /path/to/tested/program [...program's cmdline...]
-   ```
+```bash
+wget -qO- https://sh.rustup.rs | CARGO_HOME=/etc/cargo sh -s -- -y -q --no-modify-path
+```
 
-   You can generate cores or use gdb directly to follow up the crashes.
+## 设置环境变量
 
-6. We cannot stress this enough - if you want to fuzz effectively, read the
-   [docs/fuzzing_in_depth.md](docs/fuzzing_in_depth.md) document!
+将Cargo的bin目录添加到PATH环境变量中：
 
-## Contact
+```bash
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/etc/cargo/bin
+```
 
-Questions? Concerns? Bug reports?
+## 清理APT缓存
 
-* The contributors can be reached via (e.g., by creating an issue):
-  [https://github.com/AFLplusplus/AFLplusplus](https://github.com/AFLplusplus/AFLplusplus).
-* Take a look at our [FAQ](docs/FAQ.md). If you find an interesting or important
-  question missing, submit it via
-  [https://github.com/AFLplusplus/AFLplusplus/discussions](https://github.com/AFLplusplus/AFLplusplus/discussions).
-* Best: join the [Awesome Fuzzing](https://discord.gg/gCraWct) Discord server.
-* There is a (not really used) mailing list for the AFL/AFL++ project
-  ([browse archive](https://groups.google.com/group/afl-users)). To compare
-  notes with other users or to get notified about major new features, send an
-  email to <afl-users+subscribe@googlegroups.com>, but note that this is not
-  managed by us.
+清理APT缓存以释放空间：
 
-## Branches
+```bash
+apt clean -y
+```
 
-The following branches exist:
+## 设置LLVM配置
 
-* [release](https://github.com/AFLplusplus/AFLplusplus/tree/release): the latest
-  release
-* [stable/trunk](https://github.com/AFLplusplus/AFLplusplus/): stable state of
-  AFL++ - it is synced from dev from time to time when we are satisfied with its
-  stability
-* [dev](https://github.com/AFLplusplus/AFLplusplus/tree/dev): development state
-  of AFL++ - bleeding edge and you might catch a checkout which does not compile
-  or has a bug. **We only accept PRs (pull requests) for the 'dev' branch!**
-* (any other): experimental branches to work on specific features or testing new
-  functionality or changes.
+设置LLVM配置的环境变量：
 
-## Help wanted
+```bash
+export LLVM_CONFIG=llvm-config-16
+```
 
-We have several [ideas](docs/ideas.md) we would like to see in AFL++ to make it
-even better. However, we already work on so many things that we do not have the
-time for all the big ideas.
+## 克隆并安装afl-cov
 
-This can be your way to support and contribute to AFL++ - extend it to do
-something cool.
+克隆afl-cov仓库并进行安装：
 
-For everyone who wants to contribute (and send pull requests), please read our
-[contributing guidelines](CONTRIBUTING.md) before you submit.
+```bash
+git clone --depth=1 https://github.com/vanhauser-thc/afl-cov
+(cd afl-cov && make install)
+rm -rf afl-cov
+```
 
-## Special thanks
+## 编译和安装项目
 
-Many of the improvements to the original AFL and AFL++ wouldn't be possible
-without feedback, bug reports, or patches from our contributors.
+编译和安装GLMFuzz：
 
-Thank you! (For people sending pull requests - please add yourself to this list
-:-)
+```bash
+git clone https://github.com/msxfXF/GLMFuzz.git
+cd GLMFuzz
+make distrib
+sudo make install
 
-<details>
+CC=gcc-11 CXX=g++-11 TEST_BUILD= /bin/sh -c sed -i.bak 's/^	-/	/g' GNUmakefile
+make clean
+make distrib
+([ "${TEST_BUILD}" ] || (make install))
+mv GNUmakefile.bak GNUmakefile
+```
 
-  <summary>List of contributors</summary>
+## 配置开发环境
 
-  ```
-    Jann Horn                             Hanno Boeck
-    Felix Groebert                        Jakub Wilk
-    Richard W. M. Jones                   Alexander Cherepanov
-    Tom Ritter                            Hovik Manucharyan
-    Sebastian Roschke                     Eberhard Mattes
-    Padraig Brady                         Ben Laurie
-    @dronesec                             Luca Barbato
-    Tobias Ospelt                         Thomas Jarosch
-    Martin Carpenter                      Mudge Zatko
-    Joe Zbiciak                           Ryan Govostes
-    Michael Rash                          William Robinet
-    Jonathan Gray                         Filipe Cabecinhas
-    Nico Weber                            Jodie Cunningham
-    Andrew Griffiths                      Parker Thompson
-    Jonathan Neuschaefer                  Tyler Nighswander
-    Ben Nagy                              Samir Aguiar
-    Aidan Thornton                        Aleksandar Nikolich
-    Sam Hakim                             Laszlo Szekeres
-    David A. Wheeler                      Turo Lamminen
-    Andreas Stieger                       Richard Godbee
-    Louis Dassy                           teor2345
-    Alex Moneger                          Dmitry Vyukov
-    Keegan McAllister                     Kostya Serebryany
-    Richo Healey                          Martijn Bogaard
-    rc0r                                  Jonathan Foote
-    Christian Holler                      Dominique Pelle
-    Jacek Wielemborek                     Leo Barnes
-    Jeremy Barnes                         Jeff Trull
-    Guillaume Endignoux                   ilovezfs
-    Daniel Godas-Lopez                    Franjo Ivancic
-    Austin Seipp                          Daniel Komaromy
-    Daniel Binderman                      Jonathan Metzman
-    Vegard Nossum                         Jan Kneschke
-    Kurt Roeckx                           Marcel Boehme
-    Van-Thuan Pham                        Abhik Roychoudhury
-    Joshua J. Drake                       Toby Hutton
-    Rene Freingruber                      Sergey Davidoff
-    Sami Liedes                           Craig Young
-    Andrzej Jackowski                     Daniel Hodson
-    Nathan Voss                           Dominik Maier
-    Andrea Biondo                         Vincent Le Garrec
-    Khaled Yakdan                         Kuang-che Wu
-    Josephine Calliotte                   Konrad Welc
-    Thomas Rooijakkers                    David Carlier
-    Ruben ten Hove                        Joey Jiao
-    fuzzah                                @intrigus-lgtm
-    Yaakov Saxon                          Sergej Schumilo
-  ```
+配置开发环境的一些常用设置：
 
-</details>
+```bash
+CC=gcc-11 CXX=g++-11 TEST_BUILD= /bin/sh -c echo "set encoding=utf-8" > /root/.vimrc
+echo ". /etc/bash_completion" >> ~/.bashrc
+echo 'alias joe="joe --wordwrap --joe_state -nobackup"' >> ~/.bashrc
+echo "export PS1='"'[AFL++ \h] \w \$ '"'" >> ~/.bashrc
+```
 
-## Cite
+## 安装 NVIDIA 驱动
 
-If you use AFL++ in scientific work, consider citing
-[our paper](https://www.usenix.org/conference/woot20/presentation/fioraldi)
-presented at WOOT'20:
+首先，确保您的系统上安装了最新的 NVIDIA 驱动。您可以通过以下命令来安装，版本号请自行查阅：
 
-    Andrea Fioraldi, Dominik Maier, Heiko Eißfeldt, and Marc Heuse. “AFL++: Combining incremental steps of fuzzing research”. In 14th USENIX Workshop on Offensive Technologies (WOOT 20). USENIX Association, Aug. 2020.
+```bash
+sudo apt-get update
+sudo apt-get install -y nvidia-driver-470
+```
 
-<details>
+安装完成后，重启系统以使驱动生效：
 
-<summary>BibTeX</summary>
+```bash
+sudo reboot
+```
 
-  ```bibtex
-  @inproceedings {AFLplusplus-Woot20,
-  author = {Andrea Fioraldi and Dominik Maier and Heiko Ei{\ss}feldt and Marc Heuse},
-  title = {{AFL++}: Combining Incremental Steps of Fuzzing Research},
-  booktitle = {14th {USENIX} Workshop on Offensive Technologies ({WOOT} 20)},
-  year = {2020},
-  publisher = {{USENIX} Association},
-  month = aug,
-  }
-  ```
+## 安装 CUDA
 
-</details>
+接下来，安装 CUDA 工具包。请根据您的操作系统和 CUDA 版本下载相应的安装包。以下是安装 CUDA 11.3 的示例：
+
+```bash
+wget https://developer.download.nvidia.com/compute/cuda/11.3.0/local_installers/cuda_11.3.0_465.19.01_linux.run
+sudo sh cuda_11.3.0_465.19.01_linux.run
+```
+
+在安装过程中，选择安装 CUDA 工具包和驱动（如果尚未安装驱动）。
+
+安装完成后，添加 CUDA 路径到环境变量：
+
+```bash
+echo 'export PATH=/usr/local/cuda-11.3/bin:$PATH' >> ~/.bashrc
+echo 'export LD_LIBRARY_PATH=/usr/local/cuda-11.3/lib64:$LD_LIBRARY_PATH' >> ~/.bashrc
+source ~/.bashrc
+```
+
+## 安装 cuDNN
+
+下载并安装 cuDNN 库。以下是安装 cuDNN 8.2 的示例：
+
+```bash
+wget https://developer.download.nvidia.com/compute/redist/cudnn/v8.2.0/cudnn-11.3-linux-x64-v8.2.0.53.tgz
+tar -xzvf cudnn-11.3-linux-x64-v8.2.0.53.tgz
+sudo cp cuda/include/cudnn*.h /usr/local/cuda/include
+sudo cp cuda/lib64/libcudnn* /usr/local/cuda/lib64
+sudo chmod a+r /usr/local/cuda/include/cudnn*.h /usr/local/cuda/lib64/libcudnn*
+```
+
+## 安装依赖项
+
+在编译 PyTorch 之前，您需要安装一些依赖项：
+
+```bash
+sudo apt-get update
+sudo apt-get install -y build-essential cmake git libopenblas-dev libblas-dev libeigen3-dev python3-dev python3-pip
+pip3 install numpy pyyaml mkl mkl-include setuptools cmake cffi typing_extensions future six requests dataclasses
+```
+
+## 编译和安装 PyTorch
+
+克隆 PyTorch 仓库并编译安装：
+
+```bash
+git clone --recursive https://github.com/pytorch/pytorch
+cd pytorch
+git submodule sync
+git submodule update --init --recursive
+python3 setup.py install
+```
+
+## 验证安装
+
+安装完成后，您可以通过以下命令验证 PyTorch 和 CUDA 的安装是否成功：
+
+```python
+import torch
+print(torch.__version__)
+print(torch.cuda.is_available())
+print(torch.cuda.get_device_name(0))
+```
+
+如果输出显示 PyTorch 版本号和 CUDA 设备名称，则说明安装成功。
